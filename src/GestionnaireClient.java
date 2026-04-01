@@ -13,7 +13,6 @@ public class GestionnaireClient implements Runnable {
         _client = client;
         _socket = socket;
         _clients = clients;
-        _socket.setSoTimeout(5000);
     }
 
     // méthode de diffusion d'un message à tous les clients présents dans la concurrent hashMap
@@ -109,7 +108,7 @@ public class GestionnaireClient implements Runnable {
                     // si le client est présent dans la concurrent hashMap
                     if(clientReceveur != null){
                         // transformation du message de String en bytes[]
-                        byte[] messageReceveurBytes = messageReceveur.getBytes();
+                        byte[] messageReceveurBytes = ("<MP> " + _client.getPseudo() +":" + messageReceveur).getBytes();
 
                         // récupération de l'adresse IP et du port du receveur
                         InetAddress adresseReceveur =  clientReceveur.getAdresseIP();
