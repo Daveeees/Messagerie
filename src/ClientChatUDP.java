@@ -1,6 +1,5 @@
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Scanner;
@@ -8,70 +7,74 @@ import java.io.IOException;
 
 public class ClientChatUDP implements Runnable {
 
+    private final DatagramSocket socket;
 
-    static void main() throws IOException{
+    public ClientChatUDP(DatagramSocket socket) {
+        this.socket = socket;
+    }
 
-        // recuperer le pseudo de l'utilisateur
+    static void main() throws IOException {
+
         Scanner sc = new Scanner(System.in);
-        System.out.println("Entrez votre pseudo : ");
+        System.out.print("Entrez votre pseudo : ");
         String pseudo = sc.nextLine();
 
-        try {
-            DatagramSocket socketUDP = new DatagramSocket();
+        DatagramSocket socket = new DatagramSocket();
+        InetAddress serverAddress = InetAddress.getByName("localhost");
+        int serverMainPort = 9000;
 
-            InetAddress adresseClient = InetAddress.getByName("localhost");
-            int portClient = 9000;
+        String joinMsg = "JOIN:" + pseudo;
+        byte[] joinBytes = joinMsg.getBytes();
+        socket.send(new DatagramPacket(joinBytes, joinBytes.length, serverAddress, serverMainPort));
 
-            String message = "JOIN:" + pseudo;
-            byte[] messageBytes = message.getBytes();
-            DatagramPacket packetAEnvoyer = new DatagramPacket(messageBytes, messageBytes.length, adresseClient, portClient);
-            socketUDP.send(packetAEnvoyer);
+        byte[] buffer = new byte[1024];
+        DatagramPacket reponse = new DatagramPacket(buffer, buffer.length);
+        socket.receive(reponse);
+        String reponseStr = new String(reponse.getData(), 0, reponse.getLength());
 
-            byte[] buffer = new byte[1024];
-            DatagramPacket packetReponse = new DatagramPacket(buffer, buffer.length);
-            socketUDP.receive(packetReponse);
-
-            String reponse = new String(packetReponse.getData(), 0, packetReponse.getLength());
-            if (!reponse.startsWith("PORT:")) {
-                System.err.println("Reponse anormale");
-                socketUDP.close();
-                return;
-            }
-            int portAssigne = Integer.parseInt(reponse.substring(5).trim());
-            System.out.println("Port: " + portAssigne);
-
-            Thread t = new Thread();
-            t.start();
-        }catch (SocketException e) {
-            System.err.println(e);
+        if (!reponseStr.startsWith("PORT:")) {
+            System.err.println("Réponse anormale");
+            socket.close();
+            return;
         }
 
+        int portDedie = Integer.parseInt(reponseStr.substring(5).trim());
 
+        Thread threadEcoute = new Thread(new ClientChatUDP(socket));
+        threadEcoute.setDaemon(true);
+        threadEcoute.start();
 
+        String ligne;
+        while (true) {
+            ligne = sc.nextLine();
+
+            if (ligne.equalsIgnoreCase("exit")) {
+                byte[] exitMsg = "EXIT".getBytes();
+                socket.send(new DatagramPacket(exitMsg, exitMsg.length, serverAddress, portDedie));
+                break;
+            }
+
+            byte[] msg = ligne.getBytes();
+            socket.send(new DatagramPacket(msg, msg.length, serverAddress, portDedie));
+        }
+
+        socket.close();
     }
 
     @Override
     public void run() {
+        byte[] bufferEcoute = new byte[1024];
         try {
-            byte[] bufferIncoming = new byte[1024];
-            DatagramSocket socket = new DatagramSocket();
             while (true) {
-                DatagramPacket packetIncomming = new DatagramPacket(bufferIncoming, bufferIncoming.length);
-                try {
-                    socket.receive(packetIncomming);
-                }
-                catch (IOException e) {
-                    System.err.println(e);
-                }
-                String incoming = new String(packetIncomming.getData(), 0, packetIncomming.getLength());
-                System.out.println("INCOMING: " + incoming);
+                DatagramPacket paquet = new DatagramPacket(bufferEcoute, bufferEcoute.length);
+                socket.receive(paquet);
+                String message = new String(paquet.getData(), 0, paquet.getLength());
+                System.out.println(message);
             }
+        } catch (SocketException e) {
+            System.out.println(e.getMessage());
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
         }
-        catch(SocketException e){
-            System.err.println(e);
-            }
-        }
-
     }
-
-
+}
