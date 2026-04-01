@@ -39,6 +39,19 @@ public class GestionnaireClient implements Runnable {
         }
     }
 
+    public void envoyerPerso(String message,ClientInfo client){
+        byte[] envoyees = message.getBytes();
+        InetAddress adrClient = client.getAdresseIP();
+        int prtClient = client.getPort();
+
+        DatagramPacket paquetEnvoye = new DatagramPacket(envoyees, envoyees.length, adrClient, prtClient);
+        try {
+            _socket.send(paquetEnvoye);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void run() {
 
@@ -76,84 +89,42 @@ public class GestionnaireClient implements Runnable {
                     break;
                 }
                 // afficher la liste de toutes les personnes connectées au serveur
-                else if(messageRecu.equals("/liste")){
+                else if(messageRecu.equals("LISTE")){
+                    envoyerPerso("Liste des utilisateurs :", _client);
                     for(String pseudo : _clients.keySet()){
-                        // transformation du pseudo de String en byte[]
-                        byte[] pseudoEnvoye = pseudo.getBytes();
-
-                        // récupération de l'adresse IP et du port du client qui fait la demande de /liste
-                        InetAddress adresseDemandeur = _client.getAdresseIP();
-                        int portDemandeur = _client.getPort();
-
-                        // création du packet UDP à envoyer avec le pseudo
-                        DatagramPacket packetAEnvoyer = new DatagramPacket(pseudoEnvoye,pseudoEnvoye.length,adresseDemandeur,portDemandeur);
-
-                        // envoi du packet
-                        try {
-                            _socket.send(packetAEnvoyer);
-                        }
-                        catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+                        envoyerPerso("-" + pseudo,_client);
                     }
                 }
                 // envoi de message privé
-                else if(messageRecu.contains("/mp")){
+                else if(messageRecu.startsWith("/mp")) {
                     // récupération du pseudo et du message du receveur
+
                     String[] parties = messageRecu.split(" ", 3);
+                    if (parties.length != 3) {
+                        envoyerPerso("Cette commande doit être de la forme '/mp <pseudo> <message>'", _client);
+                    }
+                    else {
                     String pseudoReceveur = parties[1];
                     String messageReceveur = parties[2];
 
                     ClientInfo clientReceveur = _clients.get(pseudoReceveur);
                     // si le client est présent dans la concurrent hashMap
-                    if(clientReceveur != null){
-                        // transformation du message de String en bytes[]
-                        byte[] messageReceveurBytes = ("<MP> " + _client.getPseudo() +":" + messageReceveur).getBytes();
-
-                        // récupération de l'adresse IP et du port du receveur
-                        InetAddress adresseReceveur =  clientReceveur.getAdresseIP();
-                        int portReceveur =  clientReceveur.getPort();
-
-                        // création du paquet UDP contenant le message qui sera envoyé
-                        DatagramPacket packetMessageUDP = new DatagramPacket(messageReceveurBytes,messageReceveurBytes.length,adresseReceveur,portReceveur);
-
-                        // envoi du paquet
-                        try{
-                            _socket.send(packetMessageUDP);
+                        if (clientReceveur != null) {
+                            envoyerPerso("<MP>" + _client.getPseudo() + ": " + messageReceveur, clientReceveur);
                         }
-                        catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    // si l'utilisateur n'est pas présent dans la concurrent hashMap
-                    // envoyer au client envoyeur que l'utilisateur qu'il essaye de contacter est inexistant
-                    else{
-                        // message mis en bytes
-                        byte[] pseudoEnvoye = "Utilisateur inexistant".getBytes();
-
-                        // récupération de l'adresse IP et du port du client qui a créé le MP
-                        InetAddress adresseDemandeur = _client.getAdresseIP();
-                        int portDemandeur = _client.getPort();
-
-                        // création du packet UDP à envoyer
-                        DatagramPacket packetAEnvoyer = new DatagramPacket(pseudoEnvoye,pseudoEnvoye.length,adresseDemandeur,portDemandeur);
-
-                        // envoi du packet
-                        try {
-                            _socket.send(packetAEnvoyer);
-                        }
-                        catch (IOException e) {
-                            throw new RuntimeException(e);
+                        // si l'utilisateur n'est pas présent dans la concurrent hashMap
+                        // envoyer au client envoyeur que l'utilisateur qu'il essaye de contacter est inexistant
+                        else {
+                            envoyerPerso("Utilisateur inconnu", _client);
                         }
                     }
                 }
-
-                // si le message recu par le client n'est pas "exit"
+                    // si le message recu par le client n'est pas "exit"
                 else{
-                    // transmettre le message envoyer par le client à tout le monde
-                    String messageATransmettre = _client.getPseudo() + ": " + messageRecu;
-                    envoyerATous(messageATransmettre);
-                }
+                        // transmettre le message envoyer par le client à tout le monde
+                        String messageATransmettre = _client.getPseudo() + ": " + messageRecu;
+                        envoyerATous(messageATransmettre);
+                    }
 
             }
         }catch (IOException e) {

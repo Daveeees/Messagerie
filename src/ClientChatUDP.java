@@ -80,8 +80,14 @@ public class ClientChatUDP implements Runnable {
                 // sortir de la boucle
                 break;
             }
-            byte[] msg = ligne.getBytes();
-            socket.send(new DatagramPacket(msg, msg.length, serverAddress, portDedie));
+            else if (ligne.equalsIgnoreCase("/liste")) {
+                byte[] listeMsg = "LISTE".getBytes();
+                socket.send(new DatagramPacket(listeMsg, listeMsg.length, serverAddress, portDedie));
+            }
+            else {
+                byte[] msg = ligne.getBytes();
+                socket.send(new DatagramPacket(msg, msg.length, serverAddress, portDedie));
+            }
         }
 
         // fermer la socket
