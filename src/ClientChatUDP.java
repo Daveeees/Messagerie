@@ -20,7 +20,7 @@ public class ClientChatUDP {
         byte[] messageBytes = message.getBytes();
         DatagramPacket packetAEnvoyer = new DatagramPacket(messageBytes,messageBytes.length);
 
-
+        
 
     }
 }
