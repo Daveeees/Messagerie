@@ -13,6 +13,9 @@ public class GestionnaireClient implements Runnable {
         _client = client;
         _socket = socket;
         _clients = clients;
+
+        // receive() lève une SocketTimeOutException si aucun paquet arrrive pendant 15 secondes
+        _socket.setSoTimeout(5000);
     }
 
     // méthode de diffusion d'un message à tous les clients présents dans la concurrent hashMap
@@ -52,6 +55,18 @@ public class GestionnaireClient implements Runnable {
         }
     }
 
+    public void deconnecterClient() {
+        // retirer client de la concurrent hashMap
+        _clients.remove(_client.getPseudo());
+
+        // diffuser le kick
+        String messageLeave = _client.getPseudo() + " a été kick";
+        envoyerATous(messageLeave);
+
+        // fermer la socket dédiée
+        _socket.close();
+    }
+
     @Override
     public void run() {
 
@@ -67,8 +82,18 @@ public class GestionnaireClient implements Runnable {
                 byte[] recues = new byte[1024];
                 DatagramPacket paquetRecu = new DatagramPacket(recues, recues.length);
 
-                // réception du paquet sur la socket deédiée
-                _socket.receive(paquetRecu);
+                // si le receive lève une socketTimeoutException on deconnecte le client
+                try{
+                    // réception du paquet sur la socket dédiée
+                    _socket.receive(paquetRecu);
+                } catch (SocketTimeoutException e) {
+                    envoyerPerso("Vous avez été kick pour inactivité", _client);
+                    deconnecterClient();
+                    break;
+                }
+
+                // reset le temps qui servira a timeout le client
+                _client.resetTempsDernierMessage();
 
                 // récupération du message reçu sous forme de String
                 String messageRecu = new String(paquetRecu.getData(), 0, paquetRecu.getLength());
