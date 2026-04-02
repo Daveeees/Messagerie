@@ -12,7 +12,6 @@ public class ClientInfo {
         _pseudo = pseudo;
         _adresseIP = adresseIP;
         _port = port;
-        _dernierMessage = System.currentTimeMillis();
     }
 
     public String getPseudo() {
@@ -23,11 +22,5 @@ public class ClientInfo {
     }
     public int getPort() {
         return _port;
-    }
-    public long getTempsDernierMessage() {
-        return _dernierMessage;
-    }
-    public void resetTempsDernierMessage() {
-        _dernierMessage = System.currentTimeMillis();
     }
 }

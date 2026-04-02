@@ -15,7 +15,7 @@ public class GestionnaireClient implements Runnable {
         _clients = clients;
 
         // receive() lève une SocketTimeOutException si aucun paquet arrrive pendant 15 secondes
-        _socket.setSoTimeout(5000);
+        _socket.setSoTimeout(10000);
     }
 
     // méthode de diffusion d'un message à tous les clients présents dans la concurrent hashMap
@@ -91,9 +91,6 @@ public class GestionnaireClient implements Runnable {
                     deconnecterClient();
                     break;
                 }
-
-                // reset le temps qui servira a timeout le client
-                _client.resetTempsDernierMessage();
 
                 // récupération du message reçu sous forme de String
                 String messageRecu = new String(paquetRecu.getData(), 0, paquetRecu.getLength());
